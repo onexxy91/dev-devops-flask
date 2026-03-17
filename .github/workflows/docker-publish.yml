@@ -25,6 +25,10 @@ jobs:
         run: |
           python -m py_compile weather.py
 
+      - name: Install test dependencies
+        run: |
+          pip install pytest
+
       - name: Run tests
         run: |
           pytest
