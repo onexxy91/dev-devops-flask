@@ -175,7 +175,7 @@ HTML = """
 </html>
 """
 
-def fetch_weather(city, lang):
+def fetch_weather(, lang):
     url = f"https://wttr.in/{city}?format=j1"
     with urllib.request.urlopen(url, timeout=5) as r:
         data = json.loads(r.read().decode())
