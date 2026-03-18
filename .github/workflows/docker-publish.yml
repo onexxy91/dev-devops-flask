@@ -2,8 +2,8 @@ name: CI Build and Push
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
+    branches:
+      - develop
 
 jobs:
   test:
@@ -52,4 +52,6 @@ jobs:
         with:
           context: .
           push: true
-          tags: onexy91/dev-docker-flask:latest
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/dev-docker-flask:develop
+            ${{ secrets.DOCKER_USERNAME }}/dev-docker-flask:${{ github.sha }}
