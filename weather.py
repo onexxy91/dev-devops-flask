@@ -178,10 +178,16 @@ HTML = """
 def fetch_weather(city, lang):
     url = f"https://wttr.in/{city}?format=j1"
     with urllib.request.urlopen(url, timeout=5) as r:
-        data = json.loads(r.read().decode())
+        raw = r.read().decode()
 
-    resp = json.loads(r.read().decode())
-    data = resp.get("data", resp)       # ✅ data 키 있으면 벗기고, 없으면 그대로
+    print(f"[DEBUG] response (first 300): {raw[:300]}", flush=True)
+
+    try:
+        resp = json.loads(raw)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"JSON 파싱 실패: {e} / 응답: {raw[:200]}")
+
+    data = resp.get("data", resp)  # 'data' 키로 감싸진 경우 대응
     c = data["current_condition"][0]
     current = {
         "temp": c["temp_C"],
