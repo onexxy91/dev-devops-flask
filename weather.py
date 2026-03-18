@@ -207,6 +207,10 @@ def fetch_weather(city, lang):
     return current, forecast
 
 
+@app.route("/health")
+def health():
+    return "ok", 200
+
 @app.route("/")
 def index():
     city = request.args.get("city", "Seoul")

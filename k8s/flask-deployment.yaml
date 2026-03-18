@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flask
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: flask
+  template:
+    metadata:
+      labels:
+        app: flask
+    spec:
+      containers:
+        - name: flask
+          image: onexy91/dev-docker-flask:latest   # ← DockerHub 이미지로 변경
+          ports:
+            - containerPort: 8000
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 15    # 5 → 15
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 5         # 추가
+          livenessProbe:                # 추가
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 20
+            periodSeconds: 15
+            timeoutSeconds: 3
+
+#flask-deployment.yaml의 readinessProbe가 / 엔드포인트를 체크하고 있었는데, / 는 요청마다 wttr.in 외부 API를 호출해요.
+#probe의 기본 timeout이 1초인데, 외부 API 응답이 그보다 오래 걸려서 매번 실패 → flask pod가 계속 0/1 → endpoint 없음 → nginx가 보낼 곳이 없어서 502
