@@ -180,6 +180,8 @@ def fetch_weather(city, lang):
     with urllib.request.urlopen(url, timeout=5) as r:
         data = json.loads(r.read().decode())
 
+    resp = json.loads(r.read().decode())
+    data = resp.get("data", resp)       # ✅ data 키 있으면 벗기고, 없으면 그대로
     c = data["current_condition"][0]
     current = {
         "temp": c["temp_C"],
