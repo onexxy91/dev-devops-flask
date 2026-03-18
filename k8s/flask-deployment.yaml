@@ -17,6 +17,22 @@ spec:
           image: onexy91/dev-docker-flask:latest   # ← DockerHub 이미지로 변경
           ports:
             - containerPort: 8000
+          env:
+            - name: DEFAULT_CITY
+              valueFrom:
+                configMapKeyRef:
+                  name: weather-config
+                  key: DEFAULT_CITY
+            - name: DEFAULT_LANG
+              valueFrom:
+                configMapKeyRef:
+                  name: weather-config
+                  key: DEFAULT_LANG
+            - name: WTTR_BASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: weather-secret
+                  key: WTTR_BASE_URL
           readinessProbe:
             httpGet:
               path: /health

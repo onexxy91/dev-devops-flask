@@ -1,6 +1,6 @@
 services:
   flask:
-    image: onexy91/dev-docker-flask:devlop
+    image: onexy91/dev-docker-flask:develop
     expose:
       - "8000"
     restart: unless-stopped
