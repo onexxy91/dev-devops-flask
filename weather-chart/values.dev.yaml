@@ -1,0 +1,24 @@
+image:
+  tag: develop
+
+replicaCount: 1
+
+hpa:
+  minReplicas: 1
+  maxReplicas: 3
+  cpuUtilization: 70
+  memoryUtilization: 80
+
+config:
+  defaultCity: Seoul
+
+ingress:
+  host: weather.local
+
+resources:
+  requests:
+    cpu: "50m"
+    memory: "64Mi"
+  limits:
+    cpu: "200m"
+    memory: "128Mi"

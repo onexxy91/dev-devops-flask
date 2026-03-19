@@ -7,7 +7,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-    - host: {{ .Values.ingress.host }}
+    - host: weather.local
       http:
         paths:
           - path: /
@@ -16,4 +16,4 @@ spec:
               service:
                 name: flask
                 port:
-                  number: {{ .Values.service.port }}
+                  number: 8000

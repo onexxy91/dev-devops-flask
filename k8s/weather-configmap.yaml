@@ -3,6 +3,6 @@ kind: ConfigMap
 metadata:
   name: weather-config
 data:
-  DEFAULT_CITY: "Seoul"
-  APP_PORT: "8000"
-  DEFAULT_LANG: "ko"
+  DEFAULT_CITY: {{ .Values.config.defaultCity | quote }}
+  DEFAULT_LANG: {{ .Values.config.defaultLang | quote }}
+  APP_PORT: {{ .Values.config.appPort | quote }}
