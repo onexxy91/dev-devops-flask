@@ -281,6 +281,8 @@ def fetch_weather(city, lang):
         resp = json.loads(raw)
     except json.JSONDecodeError as e:
         raise ValueError(f"JSON 파싱 실패: {e} / 응답: {raw[:200]}")
+    
+    print('response=', resp)
 
     data = resp.get("data", resp)  # 'data' 키로 감싸진 경우 대응
     c = data["current_condition"][0]

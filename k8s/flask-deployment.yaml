@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: flask
 spec:
-  replicas: {{ .Values.replicaCount }}
+  replicas: 2
   selector:
     matchLabels:
       app: flask
@@ -14,10 +14,16 @@ spec:
     spec:
       containers:
         - name: flask
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          image: onexy91/dev-docker-flask:latest
           ports:
-            - containerPort: {{ .Values.service.port }}
+            - containerPort: 8000
+          resources:
+            requests:
+              cpu: "100m"       # 최소 CPU 0.1코어
+              memory: "128Mi"   # 최소 메모리 128MB
+            limits:
+              cpu: "500m"       # 최대 CPU 0.5코어
+              memory: "256Mi"   # 최대 메모리 256MB
           env:
             - name: DEFAULT_CITY
               valueFrom:
@@ -34,17 +40,10 @@ spec:
                 secretKeyRef:
                   name: weather-secret
                   key: WTTR_BASE_URL
-          resources:
-            requests:
-              cpu: {{ .Values.resources.requests.cpu }}
-              memory: {{ .Values.resources.requests.memory }}
-            limits:
-              cpu: {{ .Values.resources.limits.cpu }}
-              memory: {{ .Values.resources.limits.memory }}
           readinessProbe:
             httpGet:
               path: /health
-              port: {{ .Values.service.port }}
+              port: 8000
             initialDelaySeconds: 5
             periodSeconds: 10
             timeoutSeconds: 3
@@ -52,7 +51,7 @@ spec:
           livenessProbe:
             httpGet:
               path: /health
-              port: {{ .Values.service.port }}
+              port: 8000
             initialDelaySeconds: 10
             periodSeconds: 15
             timeoutSeconds: 3
