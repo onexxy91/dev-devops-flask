@@ -2,6 +2,7 @@ from flask import Flask, render_template_string, request
 import urllib.request
 import json
 import datetime
+import os
 
 app = Flask(__name__)
 
@@ -19,6 +20,10 @@ I18N = {
         "today": "오늘",
         "lang_toggle": "EN",
         "no_fav": "즐겨찾기가 없습니다.",
+        "hourly": "시간별 예보",
+        "sunrise": "일출",
+        "sunset": "일몰",
+        "rain_chance": "강수확률",
     },
     "en": {
         "title": "Weather App",
@@ -33,6 +38,10 @@ I18N = {
         "today": "Today",
         "lang_toggle": "한국어",
         "no_fav": "No favorites yet.",
+        "hourly": "Hourly Forecast",
+        "sunrise": "Sunrise",
+        "sunset": "Sunset",
+        "rain_chance": "Rain",
     },
 }
 
@@ -165,6 +174,7 @@ HTML = """
         .fc-icon { font-size: 1.4rem; margin: 4px 0; }
         .fc-max { color: #fff; font-weight: 700; font-size: 0.95rem; }
         .fc-min { color: rgba(255,255,255,0.35); font-size: 0.78rem; margin-top: 2px; }
+        .fc-rain { color: #74b9ff; font-size: 0.72rem; margin-top: 2px; }
 
         /* 즐겨찾기 */
         .fav-list { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -183,6 +193,28 @@ HTML = """
         }
         .error { color: #ff6b6b; margin-top: 16px; font-size: 0.95rem; }
         .empty { color: rgba(255,255,255,0.3); font-size: 0.9rem; }
+
+        /* 시간별 예보 */
+        .hourly { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+        .hourly::-webkit-scrollbar { height: 4px; }
+        .hourly::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 2px; }
+        .h-item {
+            flex-shrink: 0; background: rgba(255,255,255,0.07);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 14px; padding: 10px 12px; text-align: center; min-width: 60px;
+        }
+        .h-time { font-size: 0.75rem; color: rgba(255,255,255,0.5); margin-bottom: 4px; }
+        .h-icon { font-size: 1.3rem; margin: 4px 0; }
+        .h-temp { color: #fff; font-weight: 700; font-size: 0.9rem; }
+        .h-rain { color: #74b9ff; font-size: 0.75rem; margin-top: 2px; }
+
+        /* 일출/일몰 + 강수확률 */
+        .sun-row {
+            display: flex; justify-content: center; gap: 20px; margin-top: 14px;
+        }
+        .sun-item { text-align: center; }
+        .sun-label { font-size: 0.75rem; color: rgba(255,255,255,0.4); margin-bottom: 2px; }
+        .sun-value { font-size: 0.95rem; color: #fff; font-weight: 600; }
     </style>
 </head>
 <body>
@@ -215,6 +247,16 @@ HTML = """
                 <span>💧 {{ t.humidity }} {{ humidity }}%</span>
                 <span>💨 {{ t.wind }} {{ wind }} km/h</span>
             </div>
+            <div class="sun-row">
+                <div class="sun-item">
+                    <div class="sun-label">🌅 {{ t.sunrise }}</div>
+                    <div class="sun-value">{{ sunrise }}</div>
+                </div>
+                <div class="sun-item">
+                    <div class="sun-label">🌇 {{ t.sunset }}</div>
+                    <div class="sun-value">{{ sunset }}</div>
+                </div>
+            </div>
             <form method="get">
                 <input type="hidden" name="city" value="{{ city }}">
                 <input type="hidden" name="lang" value="{{ lang }}">
@@ -226,6 +268,22 @@ HTML = """
         {% endif %}
     </div>
 
+    {% if not error and hourly %}
+    <div class="card">
+        <div class="section-title">{{ t.hourly }}</div>
+        <div class="hourly">
+            {% for h in hourly %}
+            <div class="h-item">
+                <div class="h-time">{{ h.time }}</div>
+                <div class="h-icon">{{ h.icon }}</div>
+                <div class="h-temp">{{ h.temp }}°</div>
+                <div class="h-rain">💧{{ h.rain }}%</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
     {% if not error and forecast %}
     <div class="card">
         <div class="section-title">{{ t.forecast }}</div>
@@ -236,6 +294,7 @@ HTML = """
                 <div class="fc-icon">{{ day.icon }}</div>
                 <div class="fc-max">{{ day.max }}°</div>
                 <div class="fc-min">{{ day.min }}°</div>
+                <div class="fc-rain">💧{{ day.rain }}%</div>
             </div>
             {% endfor %}
         </div>
@@ -271,7 +330,8 @@ HTML = """
 """
 
 def fetch_weather(city, lang):
-    url = f"https://wttr.in/{city}?format=j1"
+    base_url = os.environ.get("WTTR_BASE_URL", "https://wttr.in")
+    url = f"{base_url}/{city}?format=j1"
     with urllib.request.urlopen(url, timeout=5) as r:
         raw = r.read().decode()
 
@@ -281,8 +341,6 @@ def fetch_weather(city, lang):
         resp = json.loads(raw)
     except json.JSONDecodeError as e:
         raise ValueError(f"JSON 파싱 실패: {e} / 응답: {raw[:200]}")
-    
-    print('response=', resp)
 
     data = resp.get("data", resp)  # 'data' 키로 감싸진 경우 대응
     c = data["current_condition"][0]
@@ -298,14 +356,41 @@ def fetch_weather(city, lang):
 
     wd = WEEKDAYS[lang]
     forecast = []
-    for i, day in enumerate(data["weather"][:5]):
+    for i, day in enumerate(data["weather"]):
         d = datetime.date.today() + datetime.timedelta(days=i)
         label = I18N[lang]["today"] if i == 0 else wd[d.weekday()]
         hourly_codes = [h["weatherCode"] for h in day.get("hourly", [])]
         day_icon = get_icon(hourly_codes[len(hourly_codes)//2]) if hourly_codes else "🌡️"
-        forecast.append({"label": label, "max": day["maxtempC"], "min": day["mintempC"], "icon": day_icon})
+        # 강수확률 평균
+        rain_chances = [int(h.get("chanceofrain", 0)) for h in day.get("hourly", [])]
+        avg_rain = max(rain_chances) if rain_chances else 0
+        forecast.append({
+            "label": label,
+            "max": day["maxtempC"],
+            "min": day["mintempC"],
+            "icon": day_icon,
+            "rain": avg_rain,
+        })
 
-    return current, forecast
+    # 시간별 예보 (오늘)
+    hourly = []
+    if data["weather"]:
+        for h in data["weather"][0].get("hourly", []):
+            time_val = int(h["time"])
+            hour = time_val // 100
+            hourly.append({
+                "time": f"{hour:02d}:00",
+                "temp": h["tempC"],
+                "icon": get_icon(h["weatherCode"]),
+                "rain": h["chanceofrain"],
+            })
+
+    # 일출/일몰
+    astronomy = data["weather"][0].get("astronomy", [{}])[0]
+    sunrise = astronomy.get("sunrise", "-")
+    sunset = astronomy.get("sunset", "-")
+
+    return current, forecast, hourly, sunrise, sunset
 
 
 
@@ -315,8 +400,8 @@ def health():
 
 @app.route("/")
 def index():
-    city = request.args.get("city", "Seoul")
-    lang = request.args.get("lang", "ko")
+    city = request.args.get("city", os.environ.get("DEFAULT_CITY", "Seoul"))
+    lang = request.args.get("lang", os.environ.get("DEFAULT_LANG", "ko"))
     if lang not in ("ko", "en"):
         lang = "ko"
     next_lang = "en" if lang == "ko" else "ko"
@@ -336,19 +421,23 @@ def index():
     favs_param = ",".join(favorites)
 
     try:
-        current, forecast = fetch_weather(city, lang)
+        current, forecast, hourly, sunrise, sunset = fetch_weather(city, lang)
         return render_template_string(
             HTML, city=city, lang=lang, next_lang=next_lang, t=t,
             favorites=favorites, favs_param=favs_param,
-            forecast=forecast, error=None, **current,
+            forecast=forecast, hourly=hourly,
+            sunrise=sunrise, sunset=sunset,
+            error=None, **current,
         )
     except Exception as e:
         return render_template_string(
             HTML, city=city, lang=lang, next_lang=next_lang, t=t,
             favorites=favorites, favs_param=favs_param,
-            forecast=[], error=str(e),
+            forecast=[], hourly=[], sunrise="-", sunset="-",
+            error=str(e),
             temp=None, feels_like=None, humidity=None, desc=None, wind=None,
         )
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000)
+    port = int(os.environ.get("APP_PORT", 8000))
+    app.run(host="0.0.0.0", port=port)
