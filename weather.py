@@ -334,7 +334,10 @@ def fetch_weather(city, lang):
     url = f"{base_url}/{city}?format=j1"
     with urllib.request.urlopen(url, timeout=5) as r:
         raw = r.read().decode()
-
+        
+    if not raw or raw.strip() == 'null':
+        raise ValueError("날씨 정보를 가져올 수 없습니다. 잠시 후 다시 시도해주세요.")
+    
     print(f"[DEBUG] response (first 300): {raw[:300]}", flush=True)
 
     try:
